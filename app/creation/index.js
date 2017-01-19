@@ -82,6 +82,7 @@ render() {
       dataSource={this.state.dataSource}
       renderRow={this.renderRow}
       enableEmptySections={true}
+      automaticallyAdjustContentInsets={false}
     />
     </View>
     
