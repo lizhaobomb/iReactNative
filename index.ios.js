@@ -7,9 +7,9 @@
 import React, { Component } from 'react';
 import Icon from 'react-native-vector-icons/Ionicons';
 
-import List from  './app/creation/index'
-import Edit from  './app/edit/index'
-import Account from  './app/account/index'
+import List from  './app/creation/index';
+import Edit from  './app/edit/index';
+import Account from  './app/account/index';
 
 import {
   AppRegistry,
