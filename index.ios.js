@@ -16,25 +16,18 @@ import {
   StyleSheet,
   Text,
   View,
-  TabBarIOS
+  TabBarIOS,
+  Navigator
 } from 'react-native';
 
 export default class iReactApp extends Component {
 
-static title = '<TabBarIOS>';
-static description = 'Tab-based navigation.';
-static displayName = 'TabBarExample';
+  static title = '<TabBarIOS>';
+  static description = 'Tab-based navigation.';
+  static displayName = 'TabBarExample';
 
-state = {
-  selectedTab: 'list',
-};
-_renderContent = (color: string, pageText: string, num?: number) => {
-    return (
-      <View style={[styles.tabContent, {backgroundColor: color}]}>
-        <Text style={styles.tabText}>{pageText}</Text>
-        <Text style={styles.tabText}>{num} re-renders of the {pageText}</Text>
-      </View>
-    );
+  state = {
+    selectedTab: 'list',
   };
 
   render() {
@@ -49,7 +42,21 @@ _renderContent = (color: string, pageText: string, num?: number) => {
               selectedTab: 'list',
             });
           }}>
-          <List />
+          <Navigator
+            initialRoute={{ 
+              name: 'list', 
+              component: List 
+            }}
+            configureScene={(route) => {
+              return Navigator.SceneConfigs.FloatFromRight
+            }}
+            renderScene={(route, navigator) => {
+              var Component = route.component
+              return <Component {...route.params} navigator={navigator} 
+                  />
+            }}
+          />
+
         </Icon.TabBarItem>
 
         <Icon.TabBarItem

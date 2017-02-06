@@ -3,6 +3,7 @@ import Icon from 'react-native-vector-icons/Ionicons';
 
 import request from '../common/request';
 import config from '../common/config';
+import Detail from './detail';
 import {
   StyleSheet,
   Text,
@@ -12,7 +13,8 @@ import {
   Image,
   Dimensions,
   ActivityIndicator,
-  RefreshControl
+  RefreshControl,
+  AlertIOS
 } from 'react-native';
 
 var width = Dimensions.get('window').width
@@ -21,6 +23,84 @@ var cachedResults = {
   nextPage: 1,
   items:[],
   total:0
+}
+
+class Item extends Component {
+
+  constructor(props) {
+    super(props);
+    var row = this.props.row
+    this.state = {
+      up:row.voted,
+      row:row
+    };
+  }
+
+  _up() {
+    var that = this
+    var up = !this.state.up
+    var row = this.state.row
+    var url = config.api.base + config.api.up
+
+    var body = {
+      accessToken:'abcdef',
+      up:up ? 'yes' : 'no',
+      id:row._id
+    }
+
+    request.post(url,body)
+    .then(function(data){
+      if (data && data.success) {
+        that.setState({up: up})
+      } else {
+        AlertIOS.alert('点赞失败，稍后重试')
+      }
+    })
+    .catch(function(err){
+      console.log(err)
+      AlertIOS.alert('点赞失败，稍后重试')
+    })
+  }
+
+  render() {
+    var row = this.state.row
+    return(
+      <TouchableHighlight onPress={this.props.onSelect}>
+        <View style={styles.item}>
+          <Text style={styles.title}>{row.title}</Text>
+          <Image
+            source={{uri: row.thumb}}
+            style={styles.thumb}
+          >
+            <Icon 
+              name='ios-play'
+              size={28}
+              style={styles.play}
+            />
+          </Image>
+          <View style={styles.itemFooter}>
+            <View style={styles.handleBox}>
+              <Icon 
+              name={this.state.up ? 'ios-heart' : 'ios-heart-outline'}
+              size={28}
+              onPress={() => this._up()}
+              style={[styles.up, this.state.up ? null : styles.down]}
+            />
+            <Text style={styles.handleText} onPress={() => this._up()}>喜欢</Text>
+            </View>
+            <View style={styles.handleBox}>
+              <Icon 
+              name='ios-chatboxes-outline'
+              size={28}
+              style={styles.commentIcon}
+            />
+            <Text style={styles.handleText}>评论</Text>
+            </View>
+          </View>
+        </View>
+      </TouchableHighlight>
+      )
+  }
 }
 
 export default class List extends Component {
@@ -40,41 +120,20 @@ export default class List extends Component {
   }
 
   _renderRow(row) {
-  	return(
-  		<TouchableHighlight>
-  			<View style={styles.item}>
-  				<Text style={styles.title}>{row.title}</Text>
-  				<Image
-  					source={{uri: row.thumb}}
-  					style={styles.thumb}
-  				>
-  					<Icon 
-  						name='ios-play'
-  						size={28}
-  						style={styles.play}
-  					/>
-  				</Image>
-  				<View style={styles.itemFooter}>
-  					<View style={styles.handleBox}>
-  						<Icon 
-  						name='ios-heart-outline'
-  						size={28}
-  						style={styles.up}
-  					/>
-  					<Text style={styles.handleText}>喜欢</Text>
-  					</View>
-  					<View style={styles.handleBox}>
-  						<Icon 
-  						name='ios-chatboxes-outline'
-  						size={28}
-  						style={styles.commentIcon}
-  					/>
-  					<Text style={styles.handleText}>评论</Text>
-  					</View>
-  				</View>
-  			</View>
-  		</TouchableHighlight>
-  		)
+  	return <Item 
+      key={row._id} 
+      onSelect={() => this._loadPage(row)} 
+      row={row} />
+  }
+
+  _loadPage(row) {
+    this.props.navigator.push({
+      name: 'detail',
+      component: Detail,
+      params: {
+        row:row
+      }
+    })
   }
 
   _fetchData(page){
@@ -177,7 +236,7 @@ export default class List extends Component {
       	</View>
       	<ListView
         dataSource={this.state.dataSource}
-        renderRow={this._renderRow}
+        renderRow={this._renderRow.bind(this)}
         renderFooter={this._renderFooter.bind(this)}
         refreshControl={
           <RefreshControl
@@ -268,9 +327,14 @@ const styles = StyleSheet.create({
   	color: '#333'
   },
 
+  down: {
+    fontSize: 22,
+    color:'#333'
+  },
+
   up: {
   	fontSize: 22,
-  	color:'#333'
+  	color:'#ed7b66'
   },
 
   commentIcon: {
