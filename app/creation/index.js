@@ -112,7 +112,6 @@ export default class List extends Component {
 	  	dataSource: ds.cloneWithRows([]),
       refreshing: false
 	  };
-    console.log(this.state);
 	}
 
   componentDidMount(){
@@ -131,7 +130,7 @@ export default class List extends Component {
       name: 'detail',
       component: Detail,
       params: {
-        row:row
+        data:row
       }
     })
   }
