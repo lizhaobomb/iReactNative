@@ -1,3 +1,4 @@
+//noinspection JSUnresolvedVariable
 import React, { Component } from 'react';
 import Icon from 'react-native-vector-icons/Ionicons';
 import Video from 'react-native-video';
@@ -18,10 +19,10 @@ export default class Detail extends Component {
     super(props);
     this.state = {
       videoProgress: 0.01,
-      videoTotalTime: 0,
       currentTime: 0,
       videoLoaded: false,
-      playing:false
+      playing:false,
+      onEnd:false,
     }
   }
 
@@ -48,7 +49,7 @@ export default class Detail extends Component {
             onError={this._onError}
             style={styles.video} />
             {
-              this.state.videoLoaded && this.state.playing 
+              this.state.videoLoaded && !this.state.playing
               ? <Icon
                   onPress={this._replay}
                   name='ios-play'
@@ -68,23 +69,29 @@ export default class Detail extends Component {
   }
 
   _replay = () => {
-    this.player.seek(210)
+    this.setState({
+      onEnd:false
+    })
+    this.player.seek(0)
   }
 
   _onLoadStart() {
     console.log('_onLoadStart')
   }
-  _onLoad() {
+  _onLoad = (data) => {
     console.log('_onLoad')
+
   }
 
   _onProgress = (data) => {
-
+    if(this.state.onEnd){
+      return;
+    }
+    console.log('_onProgress')
     var duration = data.playableDuration
     var currentTime = data.currentTime
     var percent = Number((currentTime / duration).toFixed(2))
     var newState = {
-      videoTotalTime: duration,
       currentTime: Number(currentTime.toFixed(2)),
       videoProgress: percent
     }
@@ -104,10 +111,11 @@ export default class Detail extends Component {
     this.setState({
       videoProgress:1,
       playing:false,
-      videoLoaded:false
+      onEnd:true,
     })
     console.log(this.state)
   }
+
   _onError(e){
     console.log(e)
     console.log('_onError')
