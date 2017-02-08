@@ -15,6 +15,8 @@ import {
   ScrollView,
   Image,
   ListView,
+  TextInput,
+  Modal,
 } from 'react-native';
 
 var width = Dimensions.get('window').width
@@ -44,6 +46,8 @@ export default class Detail extends Component {
       data:data,
       dataSource: ds.cloneWithRows([]),
       isLoadingTail: false,
+      animationType:'none',
+      modalVisible:false
     }
   }
 
@@ -51,30 +55,30 @@ export default class Detail extends Component {
     var data = this.state.data
     return (
       <View style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={this._back} style={styles.popBox}>
-            <Icon name='ios-arrow-back' style={styles.backIcon} />
-            <Text style={styles.backText}>返回</Text>
-          </TouchableOpacity>
-          <Text style={styles.headerTitle} numberOfLines={1}>视频详情页面</Text>
-        </View>
-        <View style={styles.videoBox}>
-          <Video
-          ref={(ref) => {
+          <View style={styles.header}>
+              <TouchableOpacity onPress={this._back} style={styles.popBox}>
+                  <Icon name='ios-arrow-back' style={styles.backIcon} />
+                  <Text style={styles.backText}>返回</Text>
+              </TouchableOpacity>
+              <Text style={styles.headerTitle} numberOfLines={1}>视频详情页面</Text>
+          </View>
+          <View style={styles.videoBox}>
+              <Video
+                ref={(ref) => {
             this.player = ref
             }}
-            source={{uri:data.video}}
-            rate={1.0}
-            muted={false}
-            paused={this.state.paused}
-            resizeMode='contain'
-            repeat={false}
-            onLoadStart={this._onLoadStart}
-            onLoad={this._onLoad}
-            onProgress={this._onProgress}
-            onEnd={this._onEnd}
-            onError={this._onError}
-            style={styles.video} />
+                source={{uri:data.video}}
+                rate={1.0}
+                muted={false}
+                paused={this.state.paused}
+                resizeMode='contain'
+                repeat={false}
+                onLoadStart={this._onLoadStart}
+                onLoad={this._onLoad}
+                onProgress={this._onProgress}
+                onEnd={this._onEnd}
+                onError={this._onError}
+                style={styles.video} />
 
             {
               !this.state.videoOk && <Text style={styles.failText}>视频出错了</Text>
@@ -82,46 +86,77 @@ export default class Detail extends Component {
 
             {
               this.state.videoLoaded && !this.state.playing
-              ? <Icon
+                ? <Icon
                   onPress={this._replay}
                   name='ios-play'
                   size={50}
                   style={styles.play} />
-              : null
+                : null
             }
 
             {
-              this.state.videoLoaded && this.state.playing 
-              ? <TouchableOpacity onPress={this._paused} style={styles.pauseButton}>
+              this.state.videoLoaded && this.state.playing
+                ? <TouchableOpacity onPress={this._paused} style={styles.pauseButton}>
                   {
-                    this.state.paused ? <Icon onPress={this._resume} 
-                                          name='ios-play' 
-                                          size={50}
-                                          style={styles.resumeIcon} />
-                                      : <Text></Text>
+                    this.state.paused ? <Icon onPress={this._resume}
+                                              name='ios-play'
+                                              size={50}
+                                              style={styles.resumeIcon} />
+                      : <Text></Text>
                   }
                 </TouchableOpacity>
-              :null
+                :null
             }
 
-            <View style={styles.progressBox}>
-              <View style={[styles.progressBar, {width:width * this.state.videoProgress}]}>
+              <View style={styles.progressBox}>
+                  <View style={[styles.progressBar, {width:width * this.state.videoProgress}]}>
+                  </View>
               </View>
-            </View>
-        </View>
-  
-        <ListView
-          dataSource={this.state.dataSource}
-          renderRow={this._renderRow}
-          enableEmptySections={true}
-          renderHeader={this._renderHeader.bind(this)}
-          renderFooter={this._renderFooter.bind(this)}
-          onEndReached={this._fetchMoreData.bind(this)}
-          onEndReachedThreshold={20}
-          automaticallyAdjustContentInsets={false}
-        />
+          </View>
+
+          <ListView
+            dataSource={this.state.dataSource}
+            renderRow={this._renderRow}
+            enableEmptySections={true}
+            renderHeader={this._renderHeader.bind(this)}
+            renderFooter={this._renderFooter.bind(this)}
+            onEndReached={this._fetchMoreData.bind(this)}
+            onEndReachedThreshold={20}
+            automaticallyAdjustContentInsets={false}
+          />
+
+          <Modal
+            animationType={'fade'}
+            visible={this.state.modalVisible}
+            onRequestClose={() => {this._setModalVisible(false)}}>
+              <View style={styles.modalContainer}>
+                  <Icon
+                    onPress={this._closeModal}
+                    name="ios-close-outline"
+                    style={styles.closeIcon}
+                  />
+
+                  <View style={styles.commentBox}>
+                      <View style={styles.comment}>
+                          <TextInput
+                            placeholder='敢不敢评论一个。。。'
+                            style={styles.commentContent}
+                            multiline={true}
+                            onFocus={this._focus}
+                            onBlur={this._blur}
+                            defaultValue={this.state.content}
+                            onChangeText={(text) => {
+                      this.setState({
+                        content:text
+                      })
+                    }}
+                          />
+                      </View>
+                  </View>
+              </View>
+          </Modal>
       </View>
-      )
+    )
   }
 
   componentDidMount() {
@@ -131,13 +166,13 @@ export default class Detail extends Component {
   _renderRow = (row) => {
     return (
       <View key={row._id} style={styles.replyBox}>
-        <Image style={styles.replyAvatar} source={{uri:row.replyBy.avatar}} />
-        <View style={styles.reply}>
-          <Text style={styles.replyNickName}>{row.replyBy.nickname}</Text>
-          <Text style={styles.replyContent}>{row.content}</Text>
-        </View>
+          <Image style={styles.replyAvatar} source={{uri:row.replyBy.avatar}} />
+          <View style={styles.reply}>
+              <Text style={styles.replyNickName}>{row.replyBy.nickname}</Text>
+              <Text style={styles.replyContent}>{row.content}</Text>
+          </View>
       </View>
-      )
+    )
   }
 
   _fetchData(page){
@@ -151,31 +186,31 @@ export default class Detail extends Component {
       accessToken:'332423',
       page: page
     })
-    .then((data) => {
-      if (data.success) {
-        var items = cachedResults.items.slice()
+      .then((data) => {
+        if (data.success) {
+          var items = cachedResults.items.slice()
 
-        items = items.concat(data.data)
-        cachedResults.nextPage += 1
-        cachedResults.items = items
-        cachedResults.total = data.total
+          items = items.concat(data.data)
+          cachedResults.nextPage += 1
+          cachedResults.items = items
+          cachedResults.total = data.total
 
-        this.setState({
-          isLoadingTail:false,
-          dataSource: this.state.dataSource.cloneWithRows(cachedResults.items)
-        })
-      }
-      console.log(data);
+          this.setState({
+            isLoadingTail:false,
+            dataSource: this.state.dataSource.cloneWithRows(cachedResults.items)
+          })
+        }
+        console.log(data);
       })
       .catch((error) => {
         if (page !==0 ) {
           this.setState({
-              isLoadingTail:false
-            }) 
+            isLoadingTail:false
+          })
         } else {
           this.setState({
-              refreshing:false
-            }) 
+            refreshing:false
+          })
         }
         console.error(error);
       });
@@ -194,32 +229,64 @@ export default class Detail extends Component {
     this._fetchData(page)
   }
 
+  _focus = () => {
+    this._setModalVisible(true)
+  }
+  _blur = () => {
+    // this._setModalVisible(true)
+  }
+  _closeModal = () => {
+    this._setModalVisible(false)
+  }
+
+  _setModalVisible = (isVisible) => {
+    this.setState({
+      modalVisible:isVisible
+    })
+  }
   _renderHeader(){
     var data = this.state.data
     return (
-      <View style={styles.infoBox}>
-        <Image style={styles.avatar} source={{uri:data.author.avatar}}>
-        </Image>
-        <View style={styles.contentBox}>
-          <Text style={styles.nickname}>{data.author.nickname}</Text>
-          <Text style={styles.title}>{data.title}</Text>
-        </View>
+      <View style={styles.listHeader}>
+          <View style={styles.infoBox}>
+              <Image style={styles.avatar} source={{uri:data.author.avatar}}>
+              </Image>
+              <View style={styles.contentBox}>
+                  <Text style={styles.nickname}>{data.author.nickname}</Text>
+                  <Text style={styles.title}>{data.title}</Text>
+              </View>
+          </View>
+          <View style={styles.commentBox}>
+              <View style={styles.comment}>
+                  <TextInput
+                    placeholder='敢不敢评论一个。。。'
+                    style={styles.commentContent}
+                    multiline={true}
+                    onFocus={this._focus}
+                  />
+              </View>
+          </View>
+
+          <View style={styles.commentArea}>
+              <Text style={styles.commentTitle}>精彩评论</Text>
+          </View>
       </View>
-      )
+
+    )
   }
 
   _renderFooter(){
     if (!this._hasMore() && cachedResults.total !==0) {
       return(
-          <View style={styles.loadingMore}>
+        <View style={styles.loadingMore}>
             <Text style={styles.loadingText}>没有更多了</Text>
-          </View>
-        )
+        </View>
+      )
     }
 
     return (
-        <ActivityIndicator style={styles.loadingMore} />
-      )
+      <ActivityIndicator style={styles.loadingMore} />
+    )
   }
 
   _paused = () => {
@@ -477,7 +544,7 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     color: '#ed7b66'
   },
-  
+
   loadingMore: {
     marginVertical: 20,
   },
@@ -485,7 +552,44 @@ const styles = StyleSheet.create({
   loadingText: {
     color: '#777',
     textAlign: 'center'
+  },
+
+  listHeader: {
+    width:width,
+    marginTop:10
+  },
+  commentBox:{
+    marginTop: 10,
+    marginBottom:10,
+    padding:8,
+    width: width
+  },
+
+  commentContent: {
+    paddingLeft:2,
+    color:'#333',
+    borderWidth:1,
+    borderColor:'#ddd',
+    borderRadius:4,
+    fontSize:14,
+    height:80
+  },
+  commentArea: {
+    width:width,
+    paddingBottom:6,
+    paddingLeft:10,
+    paddingRight:10,
+    borderBottomWidth:1,
+    borderBottomColor:'#eee'
+  },
+  modalContainer: {
+    flex: 1,
+    paddingTop:45,
+    backgroundColor:'#fff'
+  },
+  closeIcon:{
+    alignSelf:'center',
+    fontSize:30,
+    color:'#ee753c'
   }
-
-
 });
