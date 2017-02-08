@@ -19,12 +19,19 @@ import {
 
 var width = Dimensions.get('window').width
 
+var cachedResults = {
+  nextPage: 1,
+  items:[],
+  total:0
+}
+
 export default class Detail extends Component {
 
   constructor(props) {
     super(props);
 
     const ds = new ListView.DataSource({rowHasChanged: (r1, r2) => r1 !== r2})
+    var data = this.props.data
 
     this.state = {
       videoProgress: 0.01,
@@ -34,13 +41,14 @@ export default class Detail extends Component {
       onEnd:false,
       paused:false,
       videoOk:true,
-
+      data:data,
       dataSource: ds.cloneWithRows([]),
+      isLoadingTail: false,
     }
   }
 
   render() {
-    var data = this.props.data
+    var data = this.state.data
     return (
       <View style={styles.container}>
         <View style={styles.header}>
@@ -101,24 +109,17 @@ export default class Detail extends Component {
               </View>
             </View>
         </View>
-        <ScrollView 
-        enableEmptySections={true}
-        automaticallyAdjustContentInsets={false}>
-          <View style={styles.infoBox}>
-            <Image style={styles.avatar} source={{uri:data.author.avatar}}>
-            </Image>
-            <View style={styles.contentBox}>
-              <Text style={styles.nickname}>{data.author.nickname}</Text>
-              <Text style={styles.title}>{data.title}</Text>
-            </View>
-          </View>
-          <ListView
-            dataSource={this.state.dataSource}
-            renderRow={this._renderRow}
-            enableEmptySections={true}
-            automaticallyAdjustContentInsets={false}
-          />
-        </ScrollView>
+  
+        <ListView
+          dataSource={this.state.dataSource}
+          renderRow={this._renderRow}
+          enableEmptySections={true}
+          renderHeader={this._renderHeader.bind(this)}
+          renderFooter={this._renderFooter.bind(this)}
+          onEndReached={this._fetchMoreData.bind(this)}
+          onEndReachedThreshold={20}
+          automaticallyAdjustContentInsets={false}
+        />
       </View>
       )
   }
@@ -139,28 +140,86 @@ export default class Detail extends Component {
       )
   }
 
-  _fetchData = () => {
-    var url = config.api.base + config.api.comments
-    request.get(url, 
-      {
-        'creations':'124',
-        'accessToken':'332423'
-      })
+  _fetchData(page){
+
+    this.setState({
+      isLoadingTail:true
+    })
+
+    request.get(config.api.base + config.api.comments,{
+      creations:'124',
+      accessToken:'332423',
+      page: page
+    })
     .then((data) => {
-      console.log(data)
-      if (data && data.success) {
-        var comments = data.data
-        if (comments && comments.length > 0) {
-          this.setState({
-            comments : comments,
-            dataSource : this.state.dataSource.cloneWithRows(comments)
-          })
-        }
+      if (data.success) {
+        var items = cachedResults.items.slice()
+
+        items = items.concat(data.data)
+        cachedResults.nextPage += 1
+        cachedResults.items = items
+        cachedResults.total = data.total
+
+        this.setState({
+          isLoadingTail:false,
+          dataSource: this.state.dataSource.cloneWithRows(cachedResults.items)
+        })
       }
-    })
-    .catch((e) => {
-      console.log(e)
-    })
+      console.log(data);
+      })
+      .catch((error) => {
+        if (page !==0 ) {
+          this.setState({
+              isLoadingTail:false
+            }) 
+        } else {
+          this.setState({
+              refreshing:false
+            }) 
+        }
+        console.error(error);
+      });
+  }
+
+  _hasMore(){
+    return (cachedResults.items.length !== cachedResults.total)
+  }
+
+  _fetchMoreData(){
+    if (!this._hasMore() || this.state.isLoadingTail) {
+      return
+    }
+
+    var page = cachedResults.nextPage
+    this._fetchData(page)
+  }
+
+  _renderHeader(){
+    var data = this.state.data
+    return (
+      <View style={styles.infoBox}>
+        <Image style={styles.avatar} source={{uri:data.author.avatar}}>
+        </Image>
+        <View style={styles.contentBox}>
+          <Text style={styles.nickname}>{data.author.nickname}</Text>
+          <Text style={styles.title}>{data.title}</Text>
+        </View>
+      </View>
+      )
+  }
+
+  _renderFooter(){
+    if (!this._hasMore() && cachedResults.total !==0) {
+      return(
+          <View style={styles.loadingMore}>
+            <Text style={styles.loadingText}>没有更多了</Text>
+          </View>
+        )
+    }
+
+    return (
+        <ActivityIndicator style={styles.loadingMore} />
+      )
   }
 
   _paused = () => {
@@ -418,6 +477,15 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     color: '#ed7b66'
   },
+  
+  loadingMore: {
+    marginVertical: 20,
+  },
+
+  loadingText: {
+    color: '#777',
+    textAlign: 'center'
+  }
 
 
 });
