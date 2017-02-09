@@ -10,6 +10,7 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import List from  './app/creation/index';
 import Edit from  './app/edit/index';
 import Account from  './app/account/index';
+import Login from  './app/account/login';
 
 import {
   AppRegistry,
@@ -27,7 +28,7 @@ export default class iReactApp extends Component {
   static displayName = 'TabBarExample';
 
   state = {
-    selectedTab: 'list',
+    selectedTab: 'account',
   };
 
   render() {
@@ -79,7 +80,7 @@ export default class iReactApp extends Component {
               selectedTab: 'account',
             });
           }}>
-          <Account />
+          <Login />
         </Icon.TabBarItem>
       </TabBarIOS>
     );
