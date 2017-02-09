@@ -12,7 +12,7 @@ module.exports = {
   		base:'http://rap.taobao.org/mockjs/12531/',
   		creations:'api/creations',
   		comments:'api/comments',
-  		up:'api/up'
-
+  		up:'api/up',
+			signup:'api/u/signup'
   	}
 }
