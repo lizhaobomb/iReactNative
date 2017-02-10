@@ -13,6 +13,7 @@ module.exports = {
   		creations:'api/creations',
   		comments:'api/comments',
   		up:'api/up',
-			signup:'api/u/signup'
+		signup:'api/u/signup',
+		verify:'api/u/verify',
   	}
 }

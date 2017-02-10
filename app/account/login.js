@@ -3,7 +3,7 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import Button from 'react-native-button';
 import request from '../common/request';
 import config from '../common/config';
-
+import CountDownText from  '../third/countdown/CountDownText'
 import {
   StyleSheet,
   Text,
@@ -47,55 +47,52 @@ export default class Login extends Component {
         		}}
         	/>
 
-          {
-            this.state.codeSend
-            ? <View style={styles.verifycodeBox}>
-                <TextInput
-                  placeholder='输入验证码'
-                  autoCaptialize={'none'}
-                  autoCorrect={false}
-                  keyboardType={'number-pad'}
-                  style={styles.inputField}
-                  onChangeText={(text) => {
-                    this.setState({
-                      veriyCode:text
-                     })
-                  }}
-                />
-              </View>
-            : null
-          }
+        {
+          this.state.codeSend
+          ? <View style={styles.verifyCodeBox}>
+              <TextInput
+                placeholder='输入验证码'
+                autoCaptialize={'none'}
+                autoCorrect={false}
+                keyboardType={'number-pad'}
+                style={styles.inputFieldCode}
+                onChangeText={(text) => {
+                  this.setState({
+                    veriyCode:text
+                   })
+                }} 
+              />
 
-          {
-            this.state.countingDone
-            ? <Button
-                style={styles.countBtn}
-                onPress={this._sendVerifyCode}>获取验证码</Button>
-            : null
-          }
+              {
+                this.state.countingDone
+                ? <Button
+                    style={styles.countBtn}
+                    onPress={this._sendVerifyCode}>获取验证码</Button>
+                : <CountDownText
+                   style={styles.countBtn}
+                   countType='seconds' // 计时类型：seconds / date
+                   auto={true} // 自动开始
+                   afterEnd={this._countingDone} // 结束回调
+                   timeLeft={60} // 正向计时 时间起点为0秒
+                   step={-1} // 计时步长，以秒为单位，正数则为正计时，负数为倒计时
+                   startText='获取验证码' // 开始的文本
+                   endText='获取验证码' // 结束的文本
+                   intervalText={(sec) => '剩余秒数' + sec} // 定时的文本回调
+                  />
+              }                
+            </View>
+          : null
+        }
 
-        	{
-        		this.state.codeSend
-        		? <Button style={styles.btn} onPress={this._sendVerifyCode}>登录</Button>
-        		: <Button style={styles.btn} onPress={this._sendVerifyCode}>获取验证码</Button>
-        	}
-      	</View>
+      	{
+      		this.state.codeSend
+      		? <Button style={styles.btn} onPress={this._login}>登录</Button>
+      		: <Button style={styles.btn} onPress={this._sendVerifyCode}>获取验证码</Button>
+      	}
+        </View>
       </View>
     )
   }
-
-  /*
-  * <CountDownText
-   style={styles.countBtn}
-   countType='seconds' // 计时类型：seconds / date
-   auto={true} // 自动开始
-   afterEnd={this._countingDown} // 结束回调
-   timeLeft={60} // 正向计时 时间起点为0秒
-   step={-1} // 计时步长，以秒为单位，正数则为正计时，负数为倒计时
-   startText='获取验证码' // 开始的文本
-   endText='获取验证码' // 结束的文本
-   intervalText={(sec) => '剩余秒数' + sec} // 定时的文本回调
-   />*/
 
   _showVerifyCode() {
     this.setState({
@@ -103,13 +100,34 @@ export default class Login extends Component {
     })
   }
 
-  _submit() {
+  _login = () => {
+    var phoneNumber = this.state.phoneNumber
+    var code = this.state.veriyCode
 
+     if (!phoneNumber) {
+      return AlertIOS.alert('电话号码不能为空!')
+    }
+
+    if (!code) {
+      return AlertIOS.alert('验证码不能为空!')
+    }
+    var body = {phoneNumber:phoneNumber,veriyCode:code}
+    var url = config.api.base + config.api.verify
+    request.post(url, body)
+    .then((data) => {
+      if (data && data.success) {
+        this.props.afterLogin(data.data)
+      } else {
+        AlertIOS.alert('登录失败!')
+      }
+    })
+    .catch((error) => {
+      AlertIOS.alert('网络错误!')
+    })
   }
 
   _sendVerifyCode = () => {
     var phoneNumber = this.state.phoneNumber
-    console.log(phoneNumber)
     if (!phoneNumber) {
       return AlertIOS.alert('电话号码不能为空!')
     }
@@ -124,7 +142,7 @@ export default class Login extends Component {
       }
     })
     .catch((error) => {
-      AlertIOS.alert('获取验证码失败!' + error)
+      AlertIOS.alert('网络错误!')
     })
   }
 }
@@ -153,11 +171,21 @@ const styles = StyleSheet.create({
   	color: '#666',
   	fontSize: 16,
   	backgroundColor: '#fff',
-  	borderRadius: 4
+  	borderRadius: 4,
+  },
+
+  inputFieldCode: {
+    height: 40,
+    padding: 5,
+    color: '#666',
+    fontSize: 16,
+    backgroundColor: '#fff',
+    borderRadius: 4,
+    flex: 1,
   },
 
   btn: {
-  	marginTop: 30,
+  	marginTop: 10,
   	padding: 5,
   	backgroundColor: 'transparent',
   	borderWidth: 1,
@@ -167,10 +195,10 @@ const styles = StyleSheet.create({
   	color: '#ee735c'
   },
 
-  veriyCodeBox: {
+  verifyCodeBox: {
     marginTop: 10,
     flexDirection: 'row',
-    justifyContent: 'space-between'
+    justifyContent: 'space-between',
   },
 
   countBtn: {
@@ -178,12 +206,11 @@ const styles = StyleSheet.create({
     height: 40,
     padding: 10,
     marginLeft: 8,
-    backgroundColor:'transparent',
-    borderColor: '#ee735c',
+    color: '#fff',
+    backgroundColor: '#ee735c',
     textAlign: 'left',
     fontWeight: '600',
     fontSize: 15,
-    borderRadius: 2
   }
 
 });

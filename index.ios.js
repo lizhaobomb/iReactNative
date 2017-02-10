@@ -18,7 +18,8 @@ import {
   Text,
   View,
   TabBarIOS,
-  Navigator
+  Navigator,
+  AsyncStorage
 } from 'react-native';
 
 export default class iReactApp extends Component {
@@ -28,10 +29,54 @@ export default class iReactApp extends Component {
   static displayName = 'TabBarExample';
 
   state = {
-    selectedTab: 'account',
+    selectedTab: 'list',
+    logined: false,
+    user: null
   };
 
+  componentDidMount() {
+    this._asyncAppStatus()
+  }
+
+  _asyncAppStatus = () => {
+    AsyncStorage.getItem('user')
+    .then((data) => {
+      var user
+      var newState = {}
+
+      if (data) {
+        user = JSON.parse(data)
+      }
+
+      if (user && user.accessToken) {
+        newState.user = user
+        newState.logined = true
+      } else {
+        newState.logined = false
+      }
+
+      this.setState(newState)
+
+    })
+  }
+
+  _afterLogin = (user) => {
+    user = JSON.stringify(user)
+    AsyncStorage.setItem('user', user)
+    .then(() =>{
+      this.setState({
+        logined: true,
+        user: user
+      })
+    })
+  }
+
   render() {
+
+    if (!this.state.logined) {
+      return <Login afterLogin={this._afterLogin}/>
+    }
+
     return (
       <TabBarIOS tintColor="#ee735c">
         <Icon.TabBarItem

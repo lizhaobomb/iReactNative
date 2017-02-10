@@ -146,10 +146,10 @@ export default class Detail extends Component {
                             onBlur={this._blur}
                             defaultValue={this.state.content}
                             onChangeText={(text) => {
-                      this.setState({
-                        content:text
-                      })
-                    }}
+                              this.setState({
+                                content:text
+                              })
+                            }}
                           />
                       </View>
                   </View>
