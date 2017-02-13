@@ -47,6 +47,12 @@ var CLOUDINARY = {
 }
 
 function avatar(id, type) {
+  if (id.indexOf('http') > -1) {
+    return id
+  }
+  if (id.indexOf('data:image') > -1) {
+    return id
+  }
   return CLOUDINARY.resBase + '/' + type + '/upload/' + id
 }
 
@@ -69,7 +75,6 @@ export default class Account extends Component {
       if (data) {
         user = JSON.parse(data)
       }
-      user.avatar = ''
       if (user && user.accessToken) {
         this.setState({
           user: user
@@ -80,7 +85,6 @@ export default class Account extends Component {
 
   render() {
     var user = this.state.user
-    console.log(this._showPicker)
     return (
       <View style={styles.container}>
         <View style={styles.navigationBar}>
@@ -89,7 +93,7 @@ export default class Account extends Component {
         {
           user.avatar 
           ? <TouchableOpacity style={styles.avatarContainer} onPress={this._showPicker}>
-              <Image source={{uri:user.avatar}} style={styles.avatarContainer}>
+              <Image source={{uri:avatar(user.avatar, 'image')}} style={styles.avatarContainer}>
                 <View style={styles.avatarBox}>
                   {
                     this.state.avatarUploading 
@@ -100,7 +104,7 @@ export default class Account extends Component {
                         progress={this.state.avatarProgress}
                         />
                     : <Image
-                        source={{uri:user.avatar}} 
+                        source={{uri:avatar(user.avatar, 'image')}}
                         style={styles.avatar} />
                   }
                 </View>
@@ -190,8 +194,6 @@ export default class Account extends Component {
     })
     var url = CLOUDINARY.image
 
-    console.log(body)
-
     var xhr = new XMLHttpRequest();
       xhr.onreadystatechange = (e) => {
         if (xhr.readyState !== 4) {
@@ -224,13 +226,15 @@ export default class Account extends Component {
         if (response && response.public_id) {
           console.log('response>>>>>>'+response)
           var user = this.state.user
-          user.avatar = avatar(response.public_id, 'image')
+          user.avatar = response.public_id
           console.log(user.avatar)
           this.setState({
             user: user,
             avatarProgress: 0,
             avatarUploading: false
           })
+
+          this._asyncUser(true)
         }
 
       }
@@ -248,6 +252,30 @@ export default class Account extends Component {
 
     xhr.open('POST', url)
     xhr.send(body)
+  }
+
+  _asyncUser(isAvatar) {
+    var user = this.state.user
+    var avatarUrl = user.avatar
+
+    if (user && user.accessToken) {
+      var url = config.api.base + config.api.update
+      request.post(url,user)
+      .then((data) => {
+        if (data && data.success) {
+          var user = data.data
+          if (isAvatar) {
+            AlertIOS.alert('更新头像成功')
+            user.avatar = avatarUrl
+          }
+          this.setState({
+            user: user
+          }, function () {
+            AsyncStorage.setItem('user',JSON.stringify(user))
+          })
+        }
+      })
+    }
   }
 }
 
