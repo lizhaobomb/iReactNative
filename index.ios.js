@@ -29,7 +29,7 @@ export default class iReactApp extends Component {
   static displayName = 'TabBarExample';
 
   state = {
-    selectedTab: 'list',
+    selectedTab: 'account',
     logined: false,
     user: null
   };
@@ -125,7 +125,7 @@ export default class iReactApp extends Component {
               selectedTab: 'account',
             });
           }}>
-          <Login />
+          <Account />
         </Icon.TabBarItem>
       </TabBarIOS>
     );
