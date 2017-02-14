@@ -1,6 +1,7 @@
 import React, { Component } from 'react';
 import Icon from 'react-native-vector-icons/Ionicons';
 import ImagePicker from 'react-native-image-picker'
+import Button from 'react-native-button'
 import * as Progress from 'react-native-progress';
 import sha1 from 'sha1'
 import request from '../common/request';
@@ -14,7 +15,9 @@ import {
   TouchableOpacity,
   Image,
   AsyncStorage,
-  AlertIOS
+  AlertIOS,
+  Modal,
+  TextInput
 } from 'react-native';
 
 var width = Dimensions.get('window').width
@@ -64,8 +67,9 @@ export default class Account extends Component {
     this.state = {
       user: user,
       avatarProgress: 0,
-      avatarUploading: false
-    };
+      avatarUploading: false,
+      modalvisible: false
+    }
   }
 
   componentDidMount() {
@@ -89,6 +93,7 @@ export default class Account extends Component {
       <View style={styles.container}>
         <View style={styles.navigationBar}>
           <Text style={styles.naviTitle}>我的账户</Text>
+          <Text style={styles.editText} onPress={this._showModal}>编辑</Text>
         </View>
         {
           user.avatar 
@@ -131,9 +136,115 @@ export default class Account extends Component {
             </TouchableOpacity>
         }
 
+        <Modal
+          animationType={'fade'}
+          visible={this.state.modalvisible}
+          >
+          <View style={styles.modalContainer}>
+            <Icon
+              name='ios-close-outline'
+              onPress={this._closeModal}
+              style={styles.closeIcon} />
+            <View style={styles.fieldItem}>
+              <Text style={styles.label}>昵称</Text>
+              <TextInput
+                placeholder={'输入你的昵称'}
+                style={styles.inputField}
+                autoCapitalize={'none'}
+                autoCorrect={false}
+                defaultValue={user.nickname}
+                onChangeText={(text) => {
+                  this._changeUserState('nickname', text)
+                }} />
+            </View>
+
+            <View style={styles.fieldItem}>
+              <Text style={styles.label}>品种</Text>
+              <TextInput
+                placeholder={'输入品种'}
+                style={styles.inputField}
+                autoCapitalize={'none'}
+                autoCorrect={false}
+                defaultValue={user.breed}
+                onChangeText={(text) => {
+                  this._changeUserState('breed', text)
+                }} />
+            </View>
+
+           <View style={styles.fieldItem}>
+              <Text style={styles.label}>年龄</Text>
+              <TextInput
+                placeholder={'输入年龄'}
+                style={styles.inputField}
+                autoCapitalize={'none'}
+                autoCorrect={false}
+                defaultValue={user.age}
+                onChangeText={(text) => {
+                  this._changeUserState('age', text)
+                }} />
+            </View>
+
+            <View style={styles.fieldItem}>
+              <Text style={styles.label}>性别</Text>
+              <Icon.Button
+                onPress={() => {
+                  this._changeUserState('gender', 'male')
+                }}
+                style={[
+                  styles.gender,
+                  user.gender === 'male' && styles.genderChecked
+                  ]} 
+                name='ios-body'>男</Icon.Button>
+
+                <Icon.Button
+                  onPress={() => {
+                    this._changeUserState('gender', 'female')
+                  }}
+                  style={[
+                  styles.gender,
+                  user.gender === 'female' && styles.genderChecked
+                  ]} 
+                name='ios-body-outline'>女</Icon.Button>
+            </View>
+
+            <Button style={styles.btn} onPress={this._save}>保存</Button>
+
+          </View>
+        </Modal>
+        <Button style={styles.btn} onPress={this._logout}>注销</Button>
       </View>
-      )
-    }
+    )
+  }
+
+  _logout = () => {
+    this.props.logout()
+  }
+
+  _save = () => {
+   this._asyncUser()
+  }
+
+  _changeUserState(key,value) {
+    var user = this.state.user
+    user[key] = value
+    this.setState({
+      user: user
+    })
+  }
+
+  _setModalVisible = (visiable) => {
+    this.setState({
+      modalvisible: visiable
+    })
+  }
+
+  _closeModal = () => {
+    this._setModalVisible(false)
+  }
+
+  _showModal = () => {
+    this._setModalVisible(true)
+  }
 
   _showPicker = () => {
     ImagePicker.showImagePicker(photoOptions, (response) => {
@@ -256,24 +367,26 @@ export default class Account extends Component {
 
   _asyncUser(isAvatar) {
     var user = this.state.user
-    var avatarUrl = user.avatar
 
     if (user && user.accessToken) {
       var url = config.api.base + config.api.update
       request.post(url,user)
       .then((data) => {
         if (data && data.success) {
-          var user = data.data
+          var userTmp = data.data
           if (isAvatar) {
             AlertIOS.alert('更新头像成功')
-            user.avatar = avatarUrl
           }
           this.setState({
-            user: user
+            user: userTmp
           }, function () {
-            AsyncStorage.setItem('user',JSON.stringify(user))
+            AsyncStorage.setItem('user',JSON.stringify(userTmp))
+            this._closeModal()
           })
         }
+      })
+      .catch((error) => {
+        console.log(error)
       })
     }
   }
@@ -336,5 +449,73 @@ const styles = StyleSheet.create({
     height: width * 0.2,
     resizeMode: 'cover',
     borderRadius: width * 0.1,
-  }
+  },
+
+  editText: {
+    position: 'absolute',
+    top: 25,
+    right: 10,
+    color: '#fff',
+    fontSize: 14,
+  },
+
+  closeIcon: {
+    position: 'absolute',
+    top: 20,
+    right: 10,
+    width: 40,
+    height: 40,
+    color: '#ee735c',
+    fontSize: 32
+  },
+
+  modalContainer: {
+    flex: 1,
+    paddingTop: 50,
+    backgroundColor: '#fff'
+  },
+
+  fieldItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    height: 50,
+    paddingLeft: 15,
+    paddingRight: 15,
+    borderColor: '#eee',
+    borderBottomWidth: 1,
+  },
+
+  label: {
+    color: '#ccc',
+    marginRight: 10
+  },
+
+  inputField: {
+    height: 50,
+    flex: 1,
+    color: '#666',
+    fontSize: 15
+  },
+
+  gender: {
+    backgroundColor: '#ccc'
+  },
+
+  genderChecked: {
+    backgroundColor: '#ee735c'
+  },
+
+    btn: {
+    marginTop: 25,
+    padding: 10,
+    marginRight: 10,
+    marginLeft: 10,
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderRadius: 4,
+    borderColor: '#ee735c',
+    color: '#ee735c'
+  },
+
 });

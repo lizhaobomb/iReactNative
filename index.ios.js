@@ -71,6 +71,14 @@ export default class iReactApp extends Component {
     })
   }
 
+  _logout = () => {
+    AsyncStorage.removeItem('user')
+    this.setState({
+      logined: false,
+      user: null
+    })
+  }
+
   render() {
 
     if (!this.state.logined) {
@@ -125,7 +133,7 @@ export default class iReactApp extends Component {
               selectedTab: 'account',
             });
           }}>
-          <Account />
+          <Account user={this.state.user} logout={this._logout}/>
         </Icon.TabBarItem>
       </TabBarIOS>
     );

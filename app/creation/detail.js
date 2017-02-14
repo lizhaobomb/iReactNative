@@ -4,6 +4,7 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import Video from 'react-native-video';
 import request from '../common/request';
 import config from '../common/config';
+import Button from 'react-native-button'
 
 import {
   StyleSheet,
@@ -17,6 +18,7 @@ import {
   ListView,
   TextInput,
   Modal,
+  AlertIOS
 } from 'react-native';
 
 var width = Dimensions.get('window').width
@@ -47,7 +49,9 @@ export default class Detail extends Component {
       dataSource: ds.cloneWithRows([]),
       isLoadingTail: false,
       animationType:'none',
-      modalVisible:false
+      modalVisible:false,
+      isSending: false,
+      content: ''
     }
   }
 
@@ -153,6 +157,7 @@ export default class Detail extends Component {
                           />
                       </View>
                   </View>
+                  <Button style={styles.submitBtn} onPress={this._submit}>提交</Button>
               </View>
           </Modal>
       </View>
@@ -287,6 +292,57 @@ export default class Detail extends Component {
     return (
       <ActivityIndicator style={styles.loadingMore} />
     )
+  }
+
+  _submit = () => {
+    if (!this.state.content) {
+      return AlertIOS.alert('评论不能为空')
+    }
+    if (this.state.isSending) {
+      return AlertIOS.alert('正在评论中')
+    }
+
+    this.setState({
+      isSending: true
+    }, function() {
+      var body = {
+        accessToken: 'abc',
+        creation: '123',
+        content:this.state.content
+      }
+      var url = config.api.base + config.api.comments
+      request.post(url, body)
+      .then((data) => {
+        if (data && data.success) {
+          var items = cachedResults.items.slice()
+          var content = this.state.content
+            items = [{
+              content: content,
+              replyBy: {
+                avatar:"http://dummyimage.com/300x300/7d0063)",
+                nickname:"lizhao"
+            }
+          }].concat(items)
+
+          cachedResults.items = items
+          cachedResults.total = cachedResults.total + 1
+          this.setState({
+            content: '',
+            isSending: false,
+            dataSource: this.state.dataSource.cloneWithRows(cachedResults.items)
+          }) 
+          this._setModalVisible(false)
+        }
+      })
+      .catch((error) => {
+        console.log(error)
+        this.setState({
+          isSending: false
+        })
+        this._setModalVisible(false)
+        AlertIOS.alert('评论失败')
+      })
+    })
   }
 
   _paused = () => {
@@ -591,5 +647,17 @@ const styles = StyleSheet.create({
     alignSelf:'center',
     fontSize:30,
     color:'#ee753c'
+  },
+  submitBtn: {
+    alignSelf: 'center',
+    width: width - 20,
+    padding: 16,
+    marginTop: 20,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#ee753c',
+    borderRadius: 4,
+    color: '#ee753c',
+    fontSize: 16
   }
 });
