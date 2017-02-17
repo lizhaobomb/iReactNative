@@ -58,7 +58,7 @@ export default class Login extends Component {
                 style={styles.inputFieldCode}
                 onChangeText={(text) => {
                   this.setState({
-                    veriyCode:text
+                    verifyCode:text
                    })
                 }} 
               />
@@ -102,7 +102,7 @@ export default class Login extends Component {
 
   _login = () => {
     var phoneNumber = this.state.phoneNumber
-    var code = this.state.veriyCode
+    var code = this.state.verifyCode
 
      if (!phoneNumber) {
       return AlertIOS.alert('电话号码不能为空!')
@@ -111,10 +111,11 @@ export default class Login extends Component {
     if (!code) {
       return AlertIOS.alert('验证码不能为空!')
     }
-    var body = {phoneNumber:phoneNumber,veriyCode:code}
+    var body = {phoneNumber:phoneNumber,verifyCode:code}
     var url = config.api.base + config.api.verify
     request.post(url, body)
     .then((data) => {
+      console.log(data)
       if (data && data.success) {
         this.props.afterLogin(data.data)
       } else {

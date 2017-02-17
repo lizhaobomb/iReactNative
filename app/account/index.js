@@ -3,7 +3,6 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import ImagePicker from 'react-native-image-picker'
 import Button from 'react-native-button'
 import * as Progress from 'react-native-progress';
-import sha1 from 'sha1'
 import request from '../common/request';
 import config from '../common/config';
 
@@ -37,18 +36,6 @@ var photoOptions = {
   }
 }
 
-var CLOUDINARY = {
-  cloud_name: 'lizhao',  
-  api_key: '134811467767913',  
-  api_secret: 'h82sYoQNuXheDKv6J0y8ws2lCV4',  
-  base: 'https://api.cloudinary.com/v1_1/lizhao',
-  resBase: 'http://res.cloudinary.com/lizhao',
-  image: 'https://api.cloudinary.com/v1_1/lizhao/image/upload',
-  video: 'https://api.cloudinary.com/v1_1/lizhao/video/upload',
-  audio: 'https://api.cloudinary.com/v1_1/lizhao/raw/upload',
-
-}
-
 function avatar(id, type) {
   if (id.indexOf('http') > -1) {
     return id
@@ -56,7 +43,10 @@ function avatar(id, type) {
   if (id.indexOf('data:image') > -1) {
     return id
   }
-  return CLOUDINARY.resBase + '/' + type + '/upload/' + id
+  if (id.indexOf('avatar/') > -1) {
+    return  config.cloudinary.resBase + '/' + type + '/upload/' + id
+  }
+  return config.qiniu.resBase + id
 }
 
 export default class Account extends Component {
@@ -246,6 +236,18 @@ export default class Account extends Component {
     this._setModalVisible(true)
   }
 
+  _getQiniuToken = () => {
+    var accessToken = this.state.user.accessToken
+    var signatureURL = config.api.base + config.api.signature
+    return request.post(signatureURL, {
+        accessToken: accessToken,
+        cloud: 'qiniu'
+      })
+      .catch((error) => {
+        console.log('error ' + error)
+      })
+  }
+
   _showPicker = () => {
     ImagePicker.showImagePicker(photoOptions, (response) => {
       // You can display the image using either data...
@@ -259,41 +261,24 @@ export default class Account extends Component {
         return
       }
 
-      var source = {uri: 'data:image/jpeg;base64,' + response.data, isStatic: true};
-
-      var timestamp = Date.now()
-      var tags = 'app,avatar'
-      var folder = 'avatar'
-      var signatureURL = config.api.base + config.api.signature
-      var accessToken = this.state.user.accessToken
-      request.post(signatureURL, {
-        accessToken: accessToken,
-        timestamp: timestamp,
-        type: 'avatar'
-      })
+      var uri = response.uri
+      this._getQiniuToken()
       .then((data) => {
-        console.log(data)
         if (data && data.success) {
-          var signature = 'folder=' + folder + '&tags=' + tags + 
-                          '&timestamp=' + timestamp + CLOUDINARY.api_secret
-
-          signature = sha1(signature)
+          var token = data.data.token
+          var key = data.data.key
 
           var body = new FormData()
-          body.append('folder', folder)
-          body.append('signature', signature)
-          body.append('tags', tags)
-          body.append('api_key', CLOUDINARY.api_key)
-          body.append('source_type', 'image')
-          body.append('file', source.uri)
-          body.append('timestamp', timestamp)
-
+          body.append('token', token)
+          body.append('key', key)
+          body.append('file', {
+            type: 'image/png',
+            uri: uri,
+            name: key
+          })
 
           this._upload(body)
         }
-      })
-      .catch((error) => {
-        console.log('error ' + error)
       })
     })
   }
@@ -303,7 +288,7 @@ export default class Account extends Component {
       avatarProgress: 0,
       avatarUploading: true
     })
-    var url = CLOUDINARY.image
+    var url = config.qiniu.upload
 
     var xhr = new XMLHttpRequest();
       xhr.onreadystatechange = (e) => {
@@ -334,11 +319,16 @@ export default class Account extends Component {
           console.log('parse fail')
         }
 
-        if (response && response.public_id) {
-          console.log('response>>>>>>'+response)
+        console.log(response)
+
+        if (response){
           var user = this.state.user
-          user.avatar = response.public_id
-          console.log(user.avatar)
+          if (response.public_id) {
+            user.avatar = response.public_id
+          } 
+          if (response.key) {
+            user.avatar = response.key 
+          }
           this.setState({
             user: user,
             avatarProgress: 0,
