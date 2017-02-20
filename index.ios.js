@@ -29,7 +29,7 @@ export default class iReactApp extends Component {
   static displayName = 'TabBarExample';
 
   state = {
-    selectedTab: 'account',
+    selectedTab: 'edit',
     logined: false,
     user: null
   };

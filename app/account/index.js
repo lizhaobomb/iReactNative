@@ -241,7 +241,8 @@ export default class Account extends Component {
     var signatureURL = config.api.base + config.api.signature
     return request.post(signatureURL, {
         accessToken: accessToken,
-        cloud: 'qiniu'
+        cloud: 'qiniu',
+        type: 'avatar'
       })
       .catch((error) => {
         console.log('error ' + error)
