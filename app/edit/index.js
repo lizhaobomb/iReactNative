@@ -2,6 +2,7 @@ import React, { Component } from 'react';
 import Icon from 'react-native-vector-icons/Ionicons';
 import Video from 'react-native-video';
 import ImagePicker from 'react-native-image-picker';
+import CountDownText from  '../third/countdown/CountDownText'
 
 import config from '../common/config';
 import request from '../common/request';
@@ -44,19 +45,25 @@ export default class Edit extends Component {
 
   constructor(props) {
     super(props)
-  
+    var user = this.props.user || {}
     this.state = {
+      user: user,
       previewVideo: null,
+
+      //video upload
+      video: null,
       videoUploadedProgress: 0.01,
-      currentTime: 0,
       videoUploaded: false,
       videoUploading: false,
-      playing:false,
-      onEnd:false,
-      paused:false,
-      videoOk:true,
 
-      video: null,
+      currentTime: 0,
+      onEnd: false,
+      videoTotal: 0,
+      videoProgress: 0,
+
+      //count down
+      counting: false,
+      recording: false,
 
       //video player
       rate: 1,
@@ -86,7 +93,11 @@ export default class Edit extends Component {
       <View style={styles.container}>
         <View style={styles.navigationBar}>
           <Text style={styles.naviTitle}>{this.state.previewVideo ? '点击按钮配音' : '理解宝宝，从配音开始'}</Text>
-          <Text style={styles.editText} onPress={this._pickVideo}>更换视频</Text>
+          {
+            this.state.previewVideo && this.state.videoUploaded
+            ? <Text style={styles.editText} onPress={this._pickVideo}>更换视频</Text>
+            : null
+          }
         </View>
 
         <View style={styles.page}>
@@ -122,6 +133,20 @@ export default class Edit extends Component {
                         </View>
                       : null
                     }
+
+                    {
+                      this.state.recording
+                      ? <View style={styles.progressTipBox}>
+                          <ProgressViewIOS style={styles.progressBar}
+                            progressTintColor='#ee735c'
+                            progress={this.state.videoProgress} />
+                          <Text style={styles.progressTip}>
+                            录制声音中
+                          </Text>
+                        </View>
+                      : null
+                    }
+
                 </View>
               </View>
             : <TouchableOpacity style={styles.uploadContainer}
@@ -134,10 +159,39 @@ export default class Edit extends Component {
                 </View>
               </TouchableOpacity>
           }
+
+          {
+            this.state.videoUploaded
+            ? <View style={styles.recordBox}>
+                <View style={[styles.recordIconBox, this.state.recording && styles.recordOn]}>
+                  {
+                    this.state.counting && !this.state.recording
+                    ? <CountDownText
+                        style={styles.countBtn}
+                        countType='seconds' // 计时类型：seconds / date
+                        auto={true} // 自动开始
+                        afterEnd={this._record} // 结束回调
+                        timeLeft={5} // 正向计时 时间起点为0秒
+                        step={-1} // 计时步长，以秒为单位，正数则为正计时，负数为倒计时
+                        startText='准备录制' // 开始的文本
+                        endText='Go' // 结束的文本
+                        intervalText={(sec) => {
+                          return sec === 0 ? 'Go' : sec
+                          }
+                        } // 定时的文本回调
+                      />
+                    : <TouchableOpacity onPress={this._counting}>
+                        <Icon name='ios-mic' style={styles.recordIcon} />
+                      </TouchableOpacity>
+                  }
+                </View>
+              </View>
+            : null
+          }
+
         </View>
       </View>
-      )
-  }
+  )}
 
   _getQiniuToken = () => {
     var accessToken = this.state.user.accessToken
@@ -161,7 +215,7 @@ export default class Edit extends Component {
     var url = config.qiniu.upload
     var xhr = new XMLHttpRequest();
     xhr.onreadystatechange = (e) => {
-      console.log(xhr.status)
+      console.log(xhr)
 
       if (xhr.readyState !== 4) {
         return;
@@ -195,8 +249,24 @@ export default class Edit extends Component {
       if (response){
         this.setState({
           video: response,
-          videoLoaded: true,
+          videoUploaded: true,
           videoUploading: false
+        })
+
+        var videoURL = config.api.base + config.api.video
+        var accessToken = this.state.user.accessToken
+        request.post(videoURL, {
+          accessToken: accessToken,
+          video: response
+        })
+        .catch((error) => {
+          console.log(error);
+          AlertIOS.alert('视频同步出错，请重新上传！')
+        })
+        .then((data) => {
+          if (!data || !data.success) {
+            AlertIOS.alert('视频同步出错，请重新上传！')
+          }
         })
       }
     }
@@ -255,56 +325,69 @@ export default class Edit extends Component {
     })
   }
 
-   _onLoadStart() {
+   _onLoadStart = () => {
     console.log('_onLoadStart')
   }
 
   _onLoad = (data) => {
     console.log('_onLoad')
-
+    this.setState({
+      videoTotal: data.playableDuration
+    })
   }
 
   _onProgress = (data) => {
     if(this.state.onEnd){
       return;
     }
-    // console.log('_onProgress')
+    console.log('_onProgress')
     // console.log(data)
 
     var duration = data.playableDuration
     var currentTime = data.currentTime
     var percent = Number((currentTime / duration).toFixed(2))
-    var newState = {
+
+    this.setState({
       currentTime: Number(currentTime.toFixed(2)),
-      videoUploadedProgress: percent
-    }
-    if (!this.state.videoLoaded) {
-      newState.videoLoaded = true
-    }
-
-    if (!this.state.playing) {
-      newState.playing = true
-    }
-
-    this.setState(newState)
+      videoProgress: percent
+    })
   }
 
   _onEnd = () => {
     console.log('_onEnd')
-    this.setState({
-      videoUploadedProgress:1,
-      playing:false,
-      onEnd:true,
-    })
+      this.setState({
+        videoProgress:1,
+        onEnd:true,
+        recording: false
+      })
   }
 
   _onError = (e) => {
-    this.setState({
-      videoOk:false
-    })
-    console.log(e)
     console.log('_onError')
+    console.log(e)
   }
+
+  _record = () => {
+    console.log('_record')
+    this.setState({
+      videoProgress: 0,
+      recording: true,
+      counting: false
+    })
+
+    this.player.seek(0)
+  }
+
+  _counting = () => {
+    console.log('_counting')
+    if (!this.state.counting && !this.state.recording) {  
+      this.setState({
+        counting: true
+      })
+      this.player.seek(this.state.videoTotal - 0.01)
+    }
+  }
+
 }
 
 const styles = StyleSheet.create({
@@ -407,6 +490,40 @@ const styles = StyleSheet.create({
 
   progressBar: {
     width: width
+  },
+
+  recordBox: {
+    width: width,
+    height: 60,
+    alignItems: 'center'
+  },
+
+  recordIconBox: {
+    width: 68,
+    height: 68,
+    marginTop: -30,
+    borderRadius: 34,
+    backgroundColor: '#ee735c',
+    borderWidth: 1,
+    borderColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+
+  recordIcon: {
+    fontSize: 58,
+    backgroundColor: 'transparent',
+    color: '#fff'
+  },
+
+  recordOn: {
+    backgroundColor: '#ccc'
+  },
+
+  countBtn: {
+    fontSize: 32,
+    fontWeight: '600',
+    color: '#fff'
   }
 
 

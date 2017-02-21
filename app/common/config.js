@@ -15,10 +15,11 @@ module.exports = {
 		comments:'api/comments',
 		up:'api/up',
 		signup:'api/u/signup',
-  	update:'api/u/update',
+  		update:'api/u/update',
 		verify:'api/u/verify',
 		signature:'api/signature',
-  },
+		video:'api/creations/video'
+	  },
 	qiniu: {
 		upload: 'http://upload.qiniu.com',
 		resBase: 'http://olicmv3xh.bkt.clouddn.com/'
