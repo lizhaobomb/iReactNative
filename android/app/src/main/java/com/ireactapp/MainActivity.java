@@ -1,6 +1,8 @@
 package com.ireactapp;
 
 import com.facebook.react.ReactActivity;
+import com.zmxv.RNSound.RNSoundPackage;
+import com.rnim.rn.audio.ReactNativeAudioPackage;
 import com.imagepicker.ImagePickerPackage;
 import com.brentvatne.react.ReactVideoPackage;
 import com.oblador.vectoricons.VectorIconsPackage;

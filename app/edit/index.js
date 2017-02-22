@@ -1,11 +1,14 @@
-import React, { Component } from 'react';
-import Icon from 'react-native-vector-icons/Ionicons';
-import Video from 'react-native-video';
-import ImagePicker from 'react-native-image-picker';
+import React, { Component } from 'react'
+import Icon from 'react-native-vector-icons/Ionicons'
+import Video from 'react-native-video'
+import ImagePicker from 'react-native-image-picker'
 import CountDownText from  '../third/countdown/CountDownText'
+import {AudioRecorder, AudioUtils} from 'react-native-audio'
+import Sound from 'react-native-sound' 
+import * as Progress from 'react-native-progress'
 
-import config from '../common/config';
-import request from '../common/request';
+import config from '../common/config'
+import request from '../common/request'
 
 
 import {
@@ -52,6 +55,7 @@ export default class Edit extends Component {
 
       //video upload
       video: null,
+      videoId: null,
       videoUploadedProgress: 0.01,
       videoUploaded: false,
       videoUploading: false,
@@ -65,12 +69,54 @@ export default class Edit extends Component {
       counting: false,
       recording: false,
 
+      //audio
+      audio: null,
+      audioId: null,
+      audioPlaying: false,
+      recordDone: false,
+      audioUploadedProgress: 0.14,
+      audioUploaded: false,
+      audioUploading: false,
+      audioPath: AudioUtils.DocumentDirectoryPath + '/baobao.aac',
+
       //video player
       rate: 1,
-      muted: false,
+      muted: true,
       resizeMode: 'contain',
       repeat: false
     }
+
+    Sound.setCategory('Ambient', true)
+  }
+
+  _initSound = () => {
+    var audioPath = this.state.audioPath
+    var whoosh = new Sound(audioPath, null, (error) => {
+      if (error) {
+        console.log('failed to load the sound', error);
+        return;
+      } 
+    // loaded successfully
+    console.log('duration in seconds: ' + whoosh.getDuration() + 'number of channels: ' + whoosh.getNumberOfChannels());
+    })
+    whoosh.play((success) => {
+      if (success) {
+        console.log('successfully finished playing');
+      } else {
+        console.log('playback failed due to audio decoding errors');
+      }
+    })
+  }
+
+  _initAudio = () => {
+    var audioPath = this.state.audioPath
+
+    AudioRecorder.prepareRecordingAtPath(audioPath, {
+      SampleRate: 22050,
+      Channels: 1,
+      AudioQuality: "High",
+      AudioEncoding: "aac"
+    })
   }
 
   componentDidMount() {
@@ -86,6 +132,7 @@ export default class Edit extends Component {
         })
       }
     })
+    this._initAudio()
   }
 
   render() {
@@ -135,16 +182,31 @@ export default class Edit extends Component {
                     }
 
                     {
-                      this.state.recording
+                      this.state.recording || this.state.audioPlaying
                       ? <View style={styles.progressTipBox}>
                           <ProgressViewIOS style={styles.progressBar}
                             progressTintColor='#ee735c'
                             progress={this.state.videoProgress} />
-                          <Text style={styles.progressTip}>
-                            录制声音中
-                          </Text>
+                            
+                            {
+                              this.state.recording 
+                              ? <Text style={styles.progressTip}>
+                                  录制声音中
+                                </Text>
+                              : null
+                            }
+
                         </View>
                       : null
+                    }
+
+                    {
+                      this.state.recordDone
+                      ? <View style={styles.previewBox}>
+                          <Icon name='ios-play' style={styles.previewIcon} />
+                          <Text style={styles.previewText} onPress={this._preview}>预览</Text>
+                        </View>
+                      :null
                     }
 
                 </View>
@@ -189,38 +251,99 @@ export default class Edit extends Component {
             : null
           }
 
+          {
+            this.state.videoUploaded && this.state.recordDone
+            ? <View style={styles.audioUploadBox}>
+              {
+                !this.state.audioUploaded && !this.state.audioUploading 
+                ? <Text style={styles.audioUploadText} onPress={this._uploadAudio}>下一步</Text>
+                : null
+              }
+
+              {
+                this.state.audioUploading 
+                ? <Progress.Circle 
+                    size={60} 
+                    showsText={true}
+                    color={'#ee735c'}
+                    progress={this.state.audioUploadedProgress}
+                  />
+                : null
+              }
+
+             </View>
+            : null
+          }
+
+          <View>
+          </View>
+
         </View>
       </View>
   )}
 
-  _getQiniuToken = () => {
-    var accessToken = this.state.user.accessToken
+  _getToken = (body) => {
     var signatureURL = config.api.base + config.api.signature
-    return request.post(signatureURL, {
-        accessToken: accessToken,
-        cloud: 'qiniu',
-        type: 'video'
-      })
-      .catch((error) => {
-        console.log('error ' + error)
-      })
+
+    body.accessToken = this.state.user.accessToken
+
+    return request.post(signatureURL, body)
   }
 
-   _upload = (body) => {
-    this.setState({
-      videoUploading: true,
-      videoUploaded: false,
+  _uploadAudio = () => {
+    var tags = 'app,audio'
+    var folder = 'audio'
+    var timestamp = Date.now()
+    this._getToken({
+      type: 'audio',
+      cloud: 'cloudinary',
+      timestamp: timestamp
     })
+    .catch((error) => {
+      console.log(error)
+    })
+    .then((data) => {
+      if (data && data.success) {
+        var signature = data.data.token
+        var key = data.data.key
+        var body = new FormData()
 
+        body.append('folder', folder)
+        body.append('signature', signature)
+        body.append('tags', tags)
+        body.append('timestamp', timestamp)
+        body.append('api_key', config.cloudinary.api_key)
+        body.append('resource_type', 'video')
+        body.append('file', {
+          type: 'video/mp4',
+          uri: this.state.audioPath,
+          name: key
+        })
+
+        this._upload(body, 'audio')
+      }
+    })
+  }
+
+   _upload = (body, type) => {
     var url = config.qiniu.upload
-    var xhr = new XMLHttpRequest();
+    var xhr = new XMLHttpRequest()
+    if (type === 'audio') {
+      url = config.cloudinary.video
+    }
+    var newState = {}
+    newState[type + 'Uploading'] = true
+    newState[type + 'Uploaded'] = false
+    newState[type + 'UploadedProgress'] = 0
+    this.setState(newState)
+
     xhr.onreadystatechange = (e) => {
-      console.log(xhr)
 
       if (xhr.readyState !== 4) {
         return;
       }
       if (xhr.status !== 200) {
+        console.log(xhr)
         AlertIOS.alert('请求失败'+xhr.responseText)
         return
       }
@@ -247,26 +370,49 @@ export default class Edit extends Component {
       console.log(response)
 
       if (response){
-        this.setState({
-          video: response,
-          videoUploaded: true,
-          videoUploading: false
-        })
+        var newState = {}
+        newState[type] = response
+        newState[type + 'Uploading'] = false
+        newState[type + 'Uploaded'] = true
 
-        var videoURL = config.api.base + config.api.video
+        this.setState(newState)
+
+        var updateURL = config.api.base + config.api[type]
         var accessToken = this.state.user.accessToken
-        request.post(videoURL, {
-          accessToken: accessToken,
-          video: response
-        })
+        var updateBody = {
+          accessToken: accessToken
+        }
+        updateBody[type] = response
+
+        if (type === 'audio') {
+          updateBody.videoId = this.state.videoId
+        }
+
+        request
+        .post(updateURL, updateBody)
         .catch((error) => {
-          console.log(error);
-          AlertIOS.alert('视频同步出错，请重新上传！')
-        })
-        .then((data) => {
-          if (!data || !data.success) {
+          console.log(error)
+          if (type === 'video') {
             AlertIOS.alert('视频同步出错，请重新上传！')
           }
+          else if(type === 'audio'){
+            AlertIOS.alert('音频同步出错，请重新上传！')
+          }
+        })
+        .then((data) => {
+          if (data && data.success) {
+            var mediaState = {}
+            mediaState[type + 'Id'] = data.data
+            this.setState(mediaState)
+           }
+           else {
+             if (type === 'video') {
+                AlertIOS.alert('视频同步出错，请重新上传！')
+              }
+              else if(type === 'audio'){
+                AlertIOS.alert('音频同步出错，请重新上传！')
+              }
+           }
         })
       }
     }
@@ -275,20 +421,20 @@ export default class Edit extends Component {
       xhr.upload.onprogress = (event) => {
         if (event.lengthComputable) {
           var percent = Number((event.loaded / event.total).toFixed(2))
-          this.setState({
-            videoUploadedProgress: percent
-          })
+          var progressState = {}
+          progressState[type + 'UploadedProgress'] = percent
+          this.setState(progressState)
         }
       }
     }
-
+    console.log(body)
     xhr.open('POST', url)
+    xhr.setRequestHeader('Content-Type', 'multipart/form-data')
     xhr.send(body)
-  }
+}
 
   _pickVideo = () => {
     ImagePicker.showImagePicker(videoOptions, (response) => {
-      // You can display the image using either data...
       if (response.didCancel) {
         console.log('User cancelled image picker');
         return
@@ -304,7 +450,13 @@ export default class Edit extends Component {
         previewVideo: uri
       })
 
-      this._getQiniuToken()
+      this._getToken({
+         cloud: 'qiniu',
+          type: 'video'
+      })
+      .catch((error) => {
+        AlertIOS.alert(error)
+      })
       .then((data) => {
         if (data && data.success) {
           var token = data.data.token
@@ -319,13 +471,13 @@ export default class Edit extends Component {
             name: key
           })
 
-          this._upload(body)
+          this._upload(body, 'video')
         }
       })
     })
   }
 
-   _onLoadStart = () => {
+  _onLoadStart = () => {
     console.log('_onLoadStart')
   }
 
@@ -358,13 +510,31 @@ export default class Edit extends Component {
       this.setState({
         videoProgress:1,
         onEnd:true,
+      })
+    if (this.state.recording) {
+      this.setState({
+        recordDone: true,
         recording: false
       })
+      AudioRecorder.stopRecording()
+    }
   }
 
   _onError = (e) => {
     console.log('_onError')
     console.log(e)
+  }
+
+  _preview = () => {
+    if (this.state.audioPlaying) {
+      AudioRecorder.stopRecording()
+    }
+    this.setState({
+      videoProgress: 0,
+      audioPlaying: true
+    })
+    this._initSound()
+    this.player.seek(0)
   }
 
   _record = () => {
@@ -374,7 +544,7 @@ export default class Edit extends Component {
       recording: true,
       counting: false
     })
-
+    AudioRecorder.startRecording()
     this.player.seek(0)
   }
 
@@ -524,6 +694,52 @@ const styles = StyleSheet.create({
     fontSize: 32,
     fontWeight: '600',
     color: '#fff'
+  },
+
+  previewBox: {
+    width: 80,
+    height: 30,
+    position: 'absolute',
+    right: 10,
+    bottom: 10,
+    borderRadius: 3,
+    borderColor: '#ee735c',
+    borderWidth: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+
+  previewIcon: {
+    color: '#ee735c',
+    marginRight: 5,
+    fontSize: 20,
+    backgroundColor: 'transparent'
+  },
+
+  previewText: {
+    color: '#ee735c',
+    fontSize: 20,
+    backgroundColor: 'transparent'
+  },
+
+  audioUploadBox: {
+    width: width,
+    height: 60,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+
+  audioUploadText: {
+    width: width - 20,
+    padding: 5,
+    borderWidth: 1,
+    borderColor: '#ee735c',
+    borderRadius: 5,
+    textAlign: 'center',
+    fontSize: 30,
+    color: '#ee735c'
   }
 
 

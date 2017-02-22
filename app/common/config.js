@@ -18,7 +18,8 @@ module.exports = {
   		update:'api/u/update',
 		verify:'api/u/verify',
 		signature:'api/signature',
-		video:'api/creations/video'
+		video:'api/creations/video',
+		audio:'api/creations/audio'
 	  },
 	qiniu: {
 		upload: 'http://upload.qiniu.com',
