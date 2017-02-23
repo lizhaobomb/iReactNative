@@ -292,54 +292,53 @@ export default class Account extends Component {
     var url = config.qiniu.upload
 
     var xhr = new XMLHttpRequest();
-      xhr.onreadystatechange = (e) => {
-        if (xhr.readyState !== 4) {
-          return;
-        }
-        if (xhr.status !== 200) {
-          AlertIOS.alert('请求失败'+xhr.responseText)
-          return
-        }
-        if (!xhr.responseText) {
-          AlertIOS.alert('请求失败')
-          return
-        }
-
-
-        if (xhr.status === 200) {
-          console.log('success', xhr.responseText);
-        }
-
-        var response
-
-        try {
-          response = JSON.parse(xhr.response)
-        }
-        catch(e) {
-          console.log(e)
-          console.log('parse fail')
-        }
-
-        console.log(response)
-
-        if (response){
-          var user = this.state.user
-          if (response.public_id) {
-            user.avatar = response.public_id
-          } 
-          if (response.key) {
-            user.avatar = response.key 
-          }
-          this.setState({
-            user: user,
-            avatarProgress: 0,
-            avatarUploading: false
-          })
-
-          this._asyncUser(true)
-        }
-
+    xhr.onreadystatechange = (e) => {
+      if (xhr.readyState !== 4) {
+        return;
       }
+      if (xhr.status !== 200) {
+        AlertIOS.alert('请求失败'+xhr.responseText)
+        return
+      }
+      if (!xhr.responseText) {
+        AlertIOS.alert('请求失败')
+        return
+      }
+
+
+      if (xhr.status === 200) {
+        console.log('success', xhr.responseText);
+      }
+
+      var response
+
+      try {
+        response = JSON.parse(xhr.response)
+      }
+      catch(e) {
+        console.log(e)
+        console.log('parse fail')
+      }
+
+      console.log(response)
+
+      if (response){
+        var user = this.state.user
+        if (response.public_id) {
+          user.avatar = response.public_id
+        } 
+        if (response.key) {
+          user.avatar = response.key 
+        }
+        this.setState({
+          user: user,
+          avatarProgress: 0,
+          avatarUploading: false
+        })
+
+        this._asyncUser(true)
+      }
+    }
 
     if (xhr.upload) {
       xhr.upload.onprogress = (event) => {
@@ -497,7 +496,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#ee735c'
   },
 
-    btn: {
+  btn: {
     marginTop: 25,
     padding: 10,
     marginRight: 10,

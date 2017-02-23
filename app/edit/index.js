@@ -5,6 +5,9 @@ import ImagePicker from 'react-native-image-picker'
 import CountDownText from  '../third/countdown/CountDownText'
 import {AudioRecorder, AudioUtils} from 'react-native-audio'
 import Sound from 'react-native-sound' 
+import Button from 'react-native-button'
+import _ from 'lodash'
+
 import * as Progress from 'react-native-progress'
 
 import config from '../common/config'
@@ -20,7 +23,9 @@ import {
   Dimensions,
   ProgressViewIOS,
   AsyncStorage,
-  AlertIOS
+  AlertIOS,
+  Modal,
+  TextInput
 } from 'react-native';
 
 var width = Dimensions.get('window').width
@@ -43,48 +48,57 @@ var videoOptions = {
   }
 }
 
+var defaultState = {
+  previewVideo: null,
+
+  title: '',
+  modalvisible: false,
+  publishProgress: 0.24,
+  publishing: false,
+  willPublish: false,
+
+  //video upload
+  video: null,
+  videoId: null,
+  videoUploadedProgress: 0.01,
+  videoUploaded: false,
+  videoUploading: false,
+
+  currentTime: 0,
+  onEnd: false,
+  videoTotal: 0,
+  videoProgress: 0,
+
+  //count down
+  counting: false,
+  recording: false,
+
+  //audio
+  audio: null,
+  audioId: null,
+  audioPlaying: false,
+  recordDone: false,
+  audioUploadedProgress: 0.14,
+  audioUploaded: false,
+  audioUploading: false,
+  audioPath: AudioUtils.DocumentDirectoryPath + '/baobao.aac',
+
+  //video player
+  rate: 1,
+  muted: true,
+  resizeMode: 'contain',
+  repeat: false
+}
+
 
 export default class Edit extends Component {
 
   constructor(props) {
     super(props)
     var user = this.props.user || {}
-    this.state = {
-      user: user,
-      previewVideo: null,
-
-      //video upload
-      video: null,
-      videoId: null,
-      videoUploadedProgress: 0.01,
-      videoUploaded: false,
-      videoUploading: false,
-
-      currentTime: 0,
-      onEnd: false,
-      videoTotal: 0,
-      videoProgress: 0,
-
-      //count down
-      counting: false,
-      recording: false,
-
-      //audio
-      audio: null,
-      audioId: null,
-      audioPlaying: false,
-      recordDone: false,
-      audioUploadedProgress: 0.14,
-      audioUploaded: false,
-      audioUploading: false,
-      audioPath: AudioUtils.DocumentDirectoryPath + '/baobao.aac',
-
-      //video player
-      rate: 1,
-      muted: true,
-      resizeMode: 'contain',
-      repeat: false
-    }
+    var state = _.clone(defaultState)
+    state.user = user 
+    this.state = state
 
     Sound.setCategory('Ambient', true)
   }
@@ -277,10 +291,127 @@ export default class Edit extends Component {
 
           <View>
           </View>
-
         </View>
+        <Modal
+          animationType={'fade'}
+          visible={this.state.modalvisible}
+          >
+          <View style={styles.modalContainer}>
+            <Icon
+              name='ios-close-outline'
+              onPress={this._closeModal}
+              style={styles.closeIcon} />
+
+            {
+              this.state.audioUploaded && !this.state.publishing
+              ? <View style={styles.fieldBox}>
+                  <TextInput
+                    placeholder={'给宝宝一句宣言吧'}
+                    style={styles.inputField}
+                    autoCapitalize={'none'}
+                    autoCorrect={false}
+                    defaultValue={this.state.title}
+                    onChangeText={(text) => {
+                      this.setState({
+                        title: text
+                      })
+                    }} />
+                </View>
+              : null
+            }
+
+            {
+              this.state.publishing
+              ? <View style={styles.loadingBox}>
+                  <Text style={styles.loadingText}>
+                    耐心等一下，拼命为您生成专属视频中...</Text>
+                  {
+                    this.state.willPublish
+                    ? <Text style={styles.loadingText}>
+                      正在合成音频视频...</Text>
+                    : null
+                  }
+
+                  {
+                    this.state.publishProgress > 0.4
+                    ? <Text style={styles.loadingText}>
+                      开始上传咯！...</Text>
+                    : null
+                  }
+
+                  <Progress.Circle 
+                    size={60} 
+                    showsText={true}
+                    color={'#ee735c'}
+                    progress={this.state.publishProgress}
+                    />
+                </View>
+              : null
+            }
+
+            {
+              this.state.audioUploaded && !this.state.publishing
+              ? <Button style={styles.btn} onPress={this._save}>保存</Button>
+              : null
+            }
+
+          </View>
+        </Modal>
       </View>
   )}
+
+  _save = () => {
+    var body = {
+      title: this.state.title,
+      videoId: this.state.videoId,
+      audioId: this.state.audioId,
+    }
+
+    var creationURL = config.api.base + config.api.creations
+    var user  = this.state.user
+    if (user && user.accessToken) {
+      body.accessToken = user.accessToken
+
+      this.setState({
+        publishing: true
+      })
+
+      request
+      .post(creationURL,body)
+      .catch((error) => {
+        console.log(error)
+        this.setState({
+            publishing: false
+          })
+      })
+      .then((data) => {
+        if (data && data.success) {
+          this._closeModal()
+          console.log('视频发布成功')
+          var state = _.clone(defaultState)
+          this.setState(state)
+        }
+        else {
+          this.setState({
+            publishing: false
+          })
+          AlertIOS.alert('视频发布失败')
+        }
+      })
+    }
+  }
+
+  _closeModal = () => {
+    this.setState({
+      modalvisible: false
+    })
+  }
+
+   _showModal = () => {
+    this.setState({
+      modalvisible: true
+    })
+  }
 
   _getToken = (body) => {
     var signatureURL = config.api.base + config.api.signature
@@ -403,7 +534,12 @@ export default class Edit extends Component {
           if (data && data.success) {
             var mediaState = {}
             mediaState[type + 'Id'] = data.data
+            if (type === 'audio') {
+              this._showModal()
+              mediaState.willPublish = true
+            }
             this.setState(mediaState)
+
            }
            else {
              if (type === 'video') {
@@ -423,6 +559,7 @@ export default class Edit extends Component {
           var percent = Number((event.loaded / event.total).toFixed(2))
           var progressState = {}
           progressState[type + 'UploadedProgress'] = percent
+          progressState.publishProgress = percent
           this.setState(progressState)
         }
       }
@@ -446,9 +583,11 @@ export default class Edit extends Component {
       }
 
       var uri = response.uri
-      this.setState({
-        previewVideo: uri
-      })
+      var state = _.clone(defaultState)
+      state.user = this.state.user
+      state.previewVideo = uri
+
+      this.setState(state)
 
       this._getToken({
          cloud: 'qiniu',
@@ -483,8 +622,9 @@ export default class Edit extends Component {
 
   _onLoad = (data) => {
     console.log('_onLoad')
+    console.log(data)
     this.setState({
-      videoTotal: data.playableDuration
+      videoTotal: data.duration
     })
   }
 
@@ -659,7 +799,8 @@ const styles = StyleSheet.create({
   },
 
   progressBar: {
-    width: width
+    width: width,
+    height: 1
   },
 
   recordBox: {
@@ -740,7 +881,65 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 30,
     color: '#ee735c'
-  }
+  },
+
+  closeIcon: {
+    position: 'absolute',
+    top: 30,
+    right: 20,
+    color: '#ee735c',
+    fontSize: 32
+  },
+
+  loadingBox: {
+    width: width,
+    marginTop: 10,
+    padding: 15,
+    alignItems: 'center'
+  },
+
+  loadingText: {
+    marginBottom: 10,
+    color: '#333',
+    textAlign: 'center'
+  },
+
+  fieldBox: {
+    width: width - 40,
+    height: 36,
+    marginTop: 30,
+    marginLeft: 20,
+    marginRight: 20,
+    borderBottomColor: '#eaeaea',
+    borderBottomWidth: 1
+  },
+
+  modalContainer: {
+    width:width,
+    height:height,
+    paddingTop: 50,
+    backgroundColor: '#fff'
+  },
+
+  inputField: {
+    height: 36,
+    flex: 1,
+    color: '#666',
+    fontSize: 15,
+    textAlign: 'center'
+  },
+
+  btn: {
+    marginTop: 15,
+    padding: 10,
+    marginRight: 10,
+    marginLeft: 10,
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderRadius: 4,
+    borderColor: '#ee735c',
+    color: '#ee735c'
+  },
 
 
 });

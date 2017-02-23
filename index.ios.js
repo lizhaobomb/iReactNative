@@ -19,8 +19,13 @@ import {
   View,
   TabBarIOS,
   Navigator,
-  AsyncStorage
+  AsyncStorage,
+  Dimensions,
+  ActivityIndicator
 } from 'react-native';
+
+var width = Dimensions.get('window').width
+var height = Dimensions.get('window').height
 
 export default class iReactApp extends Component {
 
@@ -31,7 +36,8 @@ export default class iReactApp extends Component {
   state = {
     selectedTab: 'edit',
     logined: false,
-    user: null
+    user: null,
+    booted: false
   };
 
   componentDidMount() {
@@ -43,6 +49,7 @@ export default class iReactApp extends Component {
     .then((data) => {
       var user
       var newState = {}
+      newState.booted = true
 
       if (data) {
         user = JSON.parse(data)
@@ -81,6 +88,13 @@ export default class iReactApp extends Component {
 
   render() {
 
+    if (!this.state.booted) {
+      return (
+        <View style={styles.bootedPage}>
+          <ActivityIndicator color='#ee735c' />
+        </View>
+        )
+    }
     if (!this.state.logined) {
       return <Login afterLogin={this._afterLogin}/>
     }
@@ -147,16 +161,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#F5FCFF',
   },
-  welcome: {
-    fontSize: 20,
-    textAlign: 'center',
-    margin: 10,
-  },
-  instructions: {
-    textAlign: 'center',
-    color: '#333333',
-    marginBottom: 5,
-  },
+  bootedPage: {
+    width: width,
+    height: height,
+    justifyContent: 'center',
+    backgroundColor: '#fff'
+  }
 });
 
 AppRegistry.registerComponent('iReactApp', () => iReactApp);

@@ -14,7 +14,8 @@ import {
   Dimensions,
   ActivityIndicator,
   RefreshControl,
-  AlertIOS
+  AlertIOS,
+  AsyncStorage
 } from 'react-native';
 
 var width = Dimensions.get('window').width
@@ -23,6 +24,10 @@ var cachedResults = {
   nextPage: 1,
   items:[],
   total:0
+}
+
+function qiniuMediaURL(key) {
+  return config.qiniu.videoBase + key
 }
 
 class Item extends Component {
@@ -43,7 +48,7 @@ class Item extends Component {
     var url = config.api.base + config.api.up
 
     var body = {
-      accessToken:'abcdef',
+      accessToken:this.state.user.accessToken,
       up:up ? 'yes' : 'no',
       id:row._id
     }
@@ -69,7 +74,7 @@ class Item extends Component {
         <View style={styles.item}>
           <Text style={styles.title}>{row.title}</Text>
           <Image
-            source={{uri: row.thumb}}
+            source={{uri: qiniuMediaURL(row.qiniu_thumb)}}
             style={styles.thumb}
           >
             <Icon 
@@ -109,16 +114,20 @@ export default class List extends Component {
 	  const ds = new ListView.DataSource({rowHasChanged: (r1, r2) => r1 !== r2})
 	  this.state = {
       isLoadingTail: false,
+      refreshing: false,
 	  	dataSource: ds.cloneWithRows([]),
-      refreshing: false
-	  };
+      refreshing: false,
+      user: this.props.user || {}
+	  }
 	}
 
   componentDidMount(){
+    this._localUser()
     this._fetchData(1)
   }
 
   _renderRow(row) {
+    console.log(qiniuMediaURL(row.qiniu_thumb))
   	return <Item 
       key={row._id} 
       onSelect={() => this._loadPage(row)} 
@@ -135,6 +144,23 @@ export default class List extends Component {
     })
   }
 
+  _localUser = () => {
+    AsyncStorage.getItem('user')
+    .then((data) => {
+      console.log(data)
+      var user
+      if (data) {
+        user = JSON.parse(data)
+      }
+      if (user && user.accessToken) {
+        this.setState({
+          user: user
+        })
+        this._fetchData(1)
+      }
+    })
+  }
+
   _fetchData(page){
     if (page !== 0) {
       this.setState({
@@ -145,9 +171,8 @@ export default class List extends Component {
         refreshing:true
       })
     }
-
     request.get(config.api.base + config.api.creations,{
-      accessToken: 'abcdef',
+      accessToken: this.state.user.accessToken,
       page: page
     })
       .then((data) => {

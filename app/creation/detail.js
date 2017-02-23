@@ -29,6 +29,15 @@ var cachedResults = {
   total:0
 }
 
+function qiniuMediaURL(key,type) {
+  if (type === 'avatar') {
+    return config.qiniu.resBase + key
+  } 
+  else if(type === 'video'){
+    return config.qiniu.videoBase + key
+  }
+}
+
 export default class Detail extends Component {
 
   constructor(props) {
@@ -71,7 +80,7 @@ export default class Detail extends Component {
                 ref={(ref) => {
             this.player = ref
             }}
-                source={{uri:data.video}}
+                source={{uri: qiniuMediaURL(data.qiniu_video, 'video')}}
                 rate={1.0}
                 muted={false}
                 paused={this.state.paused}
@@ -171,7 +180,7 @@ export default class Detail extends Component {
   _renderRow = (row) => {
     return (
       <View key={row._id} style={styles.replyBox}>
-          <Image style={styles.replyAvatar} source={{uri:row.replyBy.avatar}} />
+          <Image style={styles.replyAvatar} source={{uri:qiniuMediaURL(row.replyBy.avatar,'avatar')}} />
           <View style={styles.reply}>
               <Text style={styles.replyNickName}>{row.replyBy.nickname}</Text>
               <Text style={styles.replyContent}>{row.content}</Text>
@@ -254,7 +263,7 @@ export default class Detail extends Component {
     return (
       <View style={styles.listHeader}>
           <View style={styles.infoBox}>
-              <Image style={styles.avatar} source={{uri:data.author.avatar}}>
+              <Image style={styles.avatar} source={{uri:qiniuMediaURL(data.author.avatar, 'avatar')}}>
               </Image>
               <View style={styles.contentBox}>
                   <Text style={styles.nickname}>{data.author.nickname}</Text>

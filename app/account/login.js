@@ -128,6 +128,10 @@ export default class Login extends Component {
   }
 
   _sendVerifyCode = () => {
+    this.setState({
+      codeSend: true
+    })
+    /* 测试就不发短信了，浪费
     var phoneNumber = this.state.phoneNumber
     if (!phoneNumber) {
       return AlertIOS.alert('电话号码不能为空!')
@@ -144,7 +148,8 @@ export default class Login extends Component {
     })
     .catch((error) => {
       AlertIOS.alert('网络错误!')
-    })
+    })  
+    */
   }
 }
 

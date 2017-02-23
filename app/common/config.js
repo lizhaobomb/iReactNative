@@ -23,7 +23,8 @@ module.exports = {
 	  },
 	qiniu: {
 		upload: 'http://upload.qiniu.com',
-		resBase: 'http://olicmv3xh.bkt.clouddn.com/'
+		resBase: 'http://olicmv3xh.bkt.clouddn.com/',
+		videoBase: 'http://olo1wj1st.bkt.clouddn.com/'
 	},
 	cloudinary: {
 	  cloud_name: 'lizhao',  
