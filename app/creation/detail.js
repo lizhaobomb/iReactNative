@@ -45,6 +45,7 @@ export default class Detail extends Component {
 
     const ds = new ListView.DataSource({rowHasChanged: (r1, r2) => r1 !== r2})
     var data = this.props.data
+    var user = this.props.user
 
     this.state = {
       videoProgress: 0.01,
@@ -55,6 +56,7 @@ export default class Detail extends Component {
       paused:false,
       videoOk:true,
       data:data,
+      user: user,
       dataSource: ds.cloneWithRows([]),
       isLoadingTail: false,
       animationType:'none',
@@ -196,8 +198,8 @@ export default class Detail extends Component {
     })
 
     request.get(config.api.base + config.api.comments,{
-      creations:'124',
-      accessToken:'332423',
+      creation:this.state.data._id,
+      accessToken:this.state.user.accessToken,
       page: page
     })
       .then((data) => {
@@ -315,13 +317,15 @@ export default class Detail extends Component {
       isSending: true
     }, function() {
       var body = {
-        accessToken: 'abc',
-        creation: '123',
+        accessToken: this.state.user.accessToken,
+        creation: this.state.data._id,
         content:this.state.content
       }
+      console.log(body)
       var url = config.api.base + config.api.comments
       request.post(url, body)
       .then((data) => {
+        console.log(data)
         if (data && data.success) {
           var items = cachedResults.items.slice()
           var content = this.state.content
@@ -341,6 +345,9 @@ export default class Detail extends Component {
             dataSource: this.state.dataSource.cloneWithRows(cachedResults.items)
           }) 
           this._setModalVisible(false)
+        } else {
+          // AlertIOS.alert(data.err)
+          console.log(data.err)
         }
       })
       .catch((error) => {

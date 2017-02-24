@@ -35,9 +35,12 @@ class Item extends Component {
   constructor(props) {
     super(props);
     var row = this.props.row
+    var user = this.props.user
+
     this.state = {
-      up:row.voted,
-      row:row
+      up: row.voted,
+      row: row,
+      user: user
     };
   }
 
@@ -131,7 +134,8 @@ export default class List extends Component {
   	return <Item 
       key={row._id} 
       onSelect={() => this._loadPage(row)} 
-      row={row} />
+      row={row}
+      user={this.state.user} />
   }
 
   _loadPage(row) {
@@ -139,7 +143,8 @@ export default class List extends Component {
       name: 'detail',
       component: Detail,
       params: {
-        data:row
+        data:row,
+        user: this.state.user
       }
     })
   }

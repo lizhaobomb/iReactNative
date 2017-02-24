@@ -10,7 +10,7 @@ module.exports = {
 	},
 	api:{
 		// base:'http://rap.taobao.org/mockjs/12531/',
-		base:'http://localhost:1234/',
+		base:'http://10.4.93.39:1234/',
 		creations:'api/creations',
 		comments:'api/comments',
 		up:'api/up',
