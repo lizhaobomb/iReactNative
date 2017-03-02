@@ -204,12 +204,12 @@ export default class Detail extends Component {
     })
       .then((data) => {
         if (data.success) {
-          var items = cachedResults.items.slice()
+          // var items = cachedResults.items.slice()
 
-          items = items.concat(data.data)
+          // items = items.concat(data.data)
           cachedResults.nextPage += 1
-          cachedResults.items = items
-          cachedResults.total = data.total
+          cachedResults.items = data.data
+          cachedResults.total = data.data.length
 
           this.setState({
             isLoadingTail:false,
@@ -321,24 +321,23 @@ export default class Detail extends Component {
         creation: this.state.data._id,
         content:this.state.content
       }
-      console.log(body)
       var url = config.api.base + config.api.comments
       request.post(url, body)
       .then((data) => {
         console.log(data)
         if (data && data.success) {
           var items = cachedResults.items.slice()
-          var content = this.state.content
-            items = [{
-              content: content,
-              replyBy: {
-                avatar:"http://dummyimage.com/300x300/7d0063)",
-                nickname:"lizhao"
-            }
-          }].concat(items)
+          // var content = this.state.content
+          //   items = [{
+          //     content: content,
+          //     replyBy: {
+          //       avatar:"http://dummyimage.com/300x300/7d0063)",
+          //       nickname:"lizhao"
+          //   }
+          // }].concat(items)
 
           cachedResults.items = items
-          cachedResults.total = cachedResults.total + 1
+          // cachedResults.total = cachedResults.total
           this.setState({
             content: '',
             isSending: false,
